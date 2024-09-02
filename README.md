@@ -1,2 +1,2 @@
-# GameSurvival
-Juego Survival 
+# TreasureGame
+Treasure Game 
