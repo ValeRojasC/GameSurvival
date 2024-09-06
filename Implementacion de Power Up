@@ -1,0 +1,24 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Apple : MonoBehaviour
+{
+    public float velocidadExtra = 5.0f;
+
+
+   private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            LogicaPersonaje player = other.GetComponent<LogicaPersonaje>();
+            if (player != null)
+            {
+                player.velocidadMovimiento += velocidadExtra;
+                Debug.Log("Velocidad aumentada a: " + player.velocidadMovimiento);
+
+                Destroy(gameObject);
+            }
+        }
+    }
+}
