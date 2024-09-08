@@ -1,0 +1,262 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using TMPro;
+public class LogicaPersonaje : MonoBehaviour
+{
+    NewInputSystem inputSystem;
+
+    public float velocidadMovimiento = 25f;
+    public float velocidadRotacion = 200f;
+    public float life = 3f; // Vida del personaje
+    private float maxLife;
+    private Animator anim;
+    public Rigidbody rb;
+    public float x, y;
+    public float fuerzaDeSalto = 8f;
+    public bool puedoSaltar;
+    [Header("Vida")]
+    public Image lifeBar;
+    public TextMeshProUGUI lifeText;
+    public float boostDuration = 5f;  // Duración del boost en segundos
+    public float boostAmount = 5f;    // Cantidad que se incrementa la velocidad
+
+    Vector2 dir = Vector2.zero;
+
+    void Awake()
+    {
+        inputSystem = new NewInputSystem();
+        inputSystem.Player.Movement.performed += ctx => dir = ctx.ReadValue<Vector2>();
+        inputSystem.Player.Movement.canceled += ctx => dir = Vector2.zero;
+        //inputSystem.Player.Movement.performed += ctx => Shoot();
+        //inputSystem.Player.Shoot.started += ctx => ;
+        //inputSystem.Player.Shoot.canceled += ctx => ;
+
+
+    }
+    void OnEnable()
+    {
+        inputSystem.Enable();
+    }
+
+    void OnDisable()
+    {
+
+        inputSystem.Disable();
+    }
+    void Start()
+    {
+        puedoSaltar = false;
+        anim = GetComponent<Animator>();
+        rb = GetComponent<Rigidbody>();
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        maxLife = life;
+        lifeBar.fillAmount = life / maxLife;
+        UpdateLifeText();
+    }
+    public int lives = 2; // Número inicial de vidas
+                          // Método para añadir vidas
+    public void AddLives(int amount)
+    {
+        lives = Mathf.Min(lives + amount, 3); // Asegura que no exceda 3 vidas
+    }
+    public void AddHealth(float amount)
+    {
+        life = Mathf.Min(life + amount, maxLife); // Aumenta la vida pero no excede la vida máxima
+        UpdateLifeBar();
+        UpdateLifeText(); // Actualiza el texto para reflejar la nueva vida
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("EndObject"))
+        {
+            RestartGame();
+        }
+        else if (other.CompareTag("Cofre"))
+        {
+            CollectChest(other.gameObject);
+        }
+        else if (other.CompareTag("Apple"))
+        {
+            CollectApple(other.gameObject);
+        }
+        else if (other.CompareTag("Enemy"))
+        {
+            TakeDamage(1f);
+        }
+    }
+    // Método para recoger la manzana y aumentar la velocidad
+    void CollectApple(GameObject apple)
+    {
+        Debug.Log("Manzana recogida: " + apple.name);
+        StartCoroutine(SpeedBoost()); // Inicia la corrutina para el boost de velocidad
+        Destroy(apple); // Destruye la manzana
+    }
+    // Corrutina para aumentar la velocidad temporalmente
+    private IEnumerator SpeedBoost()
+    {
+        float originalSpeed = velocidadMovimiento;  // Guarda la velocidad original
+        velocidadMovimiento += boostAmount;         // Incrementa la velocidad
+      //  Debug.Log("Velocidad aumentada "+ velocidadMovimiento);
+        yield return new WaitForSeconds(boostDuration);  // Espera 5 segundos
+        velocidadMovimiento = originalSpeed;        // Restaura la velocidad original
+        Debug.Log("Velocidad restaurada");
+    }
+    void RestartGame()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+    void CollectChest(GameObject chest)
+    {
+        Debug.Log("Cofre recogido: " + chest.name); // Verifica que el cofre esté siendo recogido
+        Destroy(chest);
+    }
+    public void TakeDamage(float damage)
+    {
+        life -= damage;
+        UpdateLifeBar();
+        UpdateLifeText(); // Actualiza el texto cuando el personaje recibe daño
+        Debug.Log("Vida restante: " + life);
+        if (life <= 0)
+        {
+            Debug.Log("El personaje ha muerto.");
+            RestartGame();
+        }
+    }
+    public void Heal(float amount)
+    {
+        life = Mathf.Min(life + amount, maxLife);
+        UpdateLifeBar();
+        UpdateLifeText(); // Actualiza el texto cuando el personaje se cura
+        Debug.Log("Vida después de curar: " + life);
+    }
+    private void UpdateLifeBar()
+    {
+        lifeBar.fillAmount = life / maxLife;
+    }
+    private void UpdateLifeText()
+    {
+        lifeText.text = "Vida restante: " + life.ToString("0");
+    }
+    //void Update()
+    //{
+    //    x = Input.GetAxis("Horizontal");
+    //    y = Input.GetAxis("Vertical");
+    //    anim.SetFloat("VelX", x);
+    //    anim.SetFloat("VelY", y);
+    //    if (puedoSaltar)
+    //    {
+    //        if (Input.GetKeyDown(KeyCode.B)) //precionar B para saltar
+    //        {
+    //            anim.SetBool("salte", true);
+    //            rb.AddForce(new Vector3(0, fuerzaDeSalto, 0), ForceMode.Impulse);
+    //        }
+    //        anim.SetBool("tocoSuelo", true);
+    //    }
+    //    else
+    //    {
+    //        EstoyCayendo();
+    //    }
+    //}
+    public void EstoyCayendo()
+    {
+        anim.SetBool("tocoSuelo", false);
+        anim.SetBool("salte", false);
+    }
+    //void FixedUpdate()
+    //{
+    //    transform.Rotate(0, x * Time.deltaTime * velocidadRotacion, 0);
+    //    transform.Translate(0, 0, y * Time.deltaTime * velocidadMovimiento);
+
+    //    //Ray ray = new Ray(transform.position, transform.forward * y);
+    //    //RaycastHit hit;
+    //    //if (Physics.Raycast(ray, out hit, velocidadMovimiento * Time.deltaTime))
+    //    //{
+    //    //    if (hit.collider.CompareTag("Wall"))
+    //    //    {
+    //    //        Debug.Log("Colisión inminente con una pared.");
+    //    //        return;
+    //    //    }
+    //    //}
+
+
+    //    Vector3 rotation = Vector3.up * x * velocidadRotacion * Time.deltaTime;
+    //    Quaternion deltaRotation = Quaternion.Euler(rotation);
+    //    rb.MoveRotation(rb.rotation * deltaRotation);
+    //    Vector3 movement = transform.forward * y * velocidadMovimiento * Time.deltaTime;
+    //    rb.MovePosition(rb.position + movement);
+    //}
+    //void FixedUpdate()
+    //{
+    //    // Movimiento basado en física
+    //    Vector3 movement = transform.forward * y * velocidadMovimiento * Time.deltaTime;
+    //    rb.MovePosition(rb.position + movement);
+
+    //    // Rotación basada en física
+    //    Vector3 rotation = Vector3.up * x * velocidadRotacion * Time.deltaTime;
+    //    Quaternion deltaRotation = Quaternion.Euler(rotation);
+    //    rb.MoveRotation(rb.rotation * deltaRotation);
+
+    //    // Opcional: Raycast para detección adicional de colisiones
+    //    Ray ray = new Ray(transform.position, transform.forward * y);
+    //    RaycastHit hit;
+    //    if (Physics.Raycast(ray, out hit, velocidadMovimiento * Time.deltaTime))
+    //    {
+    //        if (hit.collider.CompareTag("Wall"))
+    //        {
+    //            Debug.Log("Colisión inminente con una pared.");
+    //            return;
+    //        }
+    //    }
+    //}
+    void Update()
+    {
+        // En lugar de Input.GetAxis("Horizontal") y Input.GetAxis("Vertical"), usa dir.x y dir.y
+        x = dir.x; // Movimiento horizontal del joystick
+        y = dir.y; // Movimiento vertical del joystick
+
+        anim.SetFloat("VelX", x);
+        anim.SetFloat("VelY", y);
+
+        if (puedoSaltar)
+        {
+            if (Input.GetKeyDown(KeyCode.B)) // Precione B para saltar
+            {
+                anim.SetBool("salte", true);
+                rb.AddForce(new Vector3(0, fuerzaDeSalto, 0), ForceMode.Impulse);
+            }
+            anim.SetBool("tocoSuelo", true);
+        }
+        else
+        {
+            EstoyCayendo();
+        }
+    }
+
+    void FixedUpdate()
+    {
+        // Movimiento basado en la entrada del joystick (dir.x y dir.y)
+        Vector3 movement = transform.forward * y * velocidadMovimiento * Time.deltaTime;
+        rb.MovePosition(rb.position + movement);
+
+        // Rotación basada en la entrada del joystick (dir.x)
+        Vector3 rotation = Vector3.up * x * velocidadRotacion * Time.deltaTime;
+        Quaternion deltaRotation = Quaternion.Euler(rotation);
+        rb.MoveRotation(rb.rotation * deltaRotation);
+
+        // Opcional: Raycast para detección adicional de colisiones
+        Ray ray = new Ray(transform.position, transform.forward * y);
+        RaycastHit hit;
+        if (Physics.Raycast(ray, out hit, velocidadMovimiento * Time.deltaTime))
+        {
+            if (hit.collider.CompareTag("Wall"))
+            {
+                Debug.Log("Colisión inminente con una pared.");
+                return;
+            }
+        }
+    }
+
+}
